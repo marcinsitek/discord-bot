@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: discord-bot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - discord_bot_net
+    ports:
+      - "0.0.0.0:5432:5432"
+
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: discord-bot
+    depends_on:
+      - postgres
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+    ports:
+      - "8501:8501"
+    networks:
+      - discord_bot_net
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    container_name: discord-bot-dashboard
+    depends_on:
+      - postgres
+      - bot
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "8180:8180"
+    networks:
+      - discord_bot_net
+
+
+volumes:
+  postgres_data:
+
+networks:
+  discord_bot_net:
+    name: discord_bot_net
+    driver: bridge
